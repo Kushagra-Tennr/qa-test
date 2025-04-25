@@ -189,4 +189,4 @@ async function initDB() {
 window.API = API;
 
 // Initialize database
-await initDB().catch(console.error);
+initDB().then(() => alert("Server Up")).catch(console.error);
