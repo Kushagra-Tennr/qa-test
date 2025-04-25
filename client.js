@@ -59,8 +59,11 @@ function clearError(element) {
   element.style.borderColor = '';
 }
 
-// Modified login function with validation
-function login() {
+// State management
+let currentUser = null;
+
+// UI Functions
+async function login() {
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
 
@@ -81,12 +84,31 @@ function login() {
   clearError(document.getElementById('username'));
   clearError(document.getElementById('password'));
 
-  // Proceed with login logic
-  window.login(username, password);
+  try {
+    const user = await window.API.login(username, password);
+    if (user) {
+      currentUser = {
+        id: user[0],
+        username: user[1]
+      };
+
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('noteSection').style.display = 'block';
+
+      if (username === 'admin') {
+        document.getElementById('adminPanel').style.display = 'block';
+      }
+
+      loadNotes();
+    } else {
+      showError(document.getElementById('password'), 'Invalid credentials');
+    }
+  } catch (error) {
+    showError(document.getElementById('password'), 'Login failed: ' + error);
+  }
 }
 
-// Modified register function with validation
-function register() {
+async function register() {
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
 
@@ -107,12 +129,19 @@ function register() {
   clearError(document.getElementById('username'));
   clearError(document.getElementById('password'));
 
-  // Proceed with registration logic
-  window.register(username, password);
+  try {
+    const result = await window.API.register(username, password);
+    if (result.success) {
+      alert('Registration successful! Please login.');
+    } else {
+      showError(document.getElementById('username'), 'Registration failed: ' + result.error);
+    }
+  } catch (error) {
+    showError(document.getElementById('username'), 'Registration failed: ' + error);
+  }
 }
 
-// Modified addNote function with validation
-function addNote() {
+async function addNote() {
   const noteText = document.getElementById('newNote').value;
   const noteValidation = validateNote(noteText);
 
@@ -124,8 +153,151 @@ function addNote() {
   // Clear any existing errors
   clearError(document.getElementById('newNote'));
 
-  // Proceed with adding note
-  window.addNote(noteText);
+  try {
+    const result = await window.API.addNote(currentUser.id, noteText);
+    if (result.success) {
+      document.getElementById('newNote').value = '';
+      loadNotes();
+    } else {
+      showError(document.getElementById('newNote'), 'Failed to add note: ' + result.error);
+    }
+  } catch (error) {
+    showError(document.getElementById('newNote'), 'Failed to add note: ' + error);
+  }
+}
+
+async function loadNotes() {
+  try {
+    const notes = await window.API.getNotes(currentUser.id);
+    const notesList = document.getElementById('notesList');
+    notesList.innerHTML = '';
+
+    notes.forEach(note => {
+      notesList.innerHTML += `
+        <div class="note">
+          ${note[2]}
+          <button onclick="deleteNote(${note[0]})">Delete</button>
+        </div>
+      `;
+    });
+  } catch (error) {
+    console.error('Failed to load notes:', error);
+  }
+}
+
+async function deleteNote(noteId) {
+  try {
+    const result = await window.API.deleteNote(noteId);
+    if (result.success) {
+      loadNotes();
+    } else {
+      alert('Failed to delete note: ' + result.error);
+    }
+  } catch (error) {
+    alert('Failed to delete note: ' + error);
+  }
+}
+
+async function showAllUsers() {
+  try {
+    const users = await window.API.getAllUsers();
+    const usersList = document.getElementById('usersList');
+    usersList.innerHTML = '';
+
+    users.forEach(user => {
+      usersList.innerHTML += `
+        <div>
+          ID: ${user[0]}, Username: ${user[1]}, Password: ${user[2]}
+        </div>
+      `;
+    });
+  } catch (error) {
+    console.error('Failed to load users:', error);
+  }
+}
+
+async function loadPaymentInfo() {
+  try {
+    const payments = await window.API.getPaymentInfo();
+    const paymentInfoList = document.getElementById('paymentInfoList');
+    paymentInfoList.innerHTML = '';
+
+    payments.forEach(payment => {
+      paymentInfoList.innerHTML += `
+        <div class="payment-info">
+          <p>User ID: ${payment[1]}</p>
+          <p>Card Number: ${payment[2]}</p>
+          <p>Card Holder: ${payment[3]}</p>
+          <p>Expiry Date: ${payment[4]}</p>
+          <p>CVV: ${payment[5]}</p>
+          <p>Billing Address: ${payment[6]}</p>
+          <button onclick="deletePaymentInfo(${payment[0]})">Delete</button>
+        </div>
+      `;
+    });
+  } catch (error) {
+    console.error('Failed to load payment info:', error);
+  }
+}
+
+async function deletePaymentInfo(id) {
+  try {
+    const result = await window.API.deletePaymentInfo(id);
+    if (result.success) {
+      loadPaymentInfo();
+    } else {
+      alert('Failed to delete payment info: ' + result.error);
+    }
+  } catch (error) {
+    alert('Failed to delete payment info: ' + error);
+  }
+}
+
+async function addPaymentInfo() {
+  const userId = document.getElementById('paymentUserId').value;
+  const cardNumber = document.getElementById('paymentCardNumber').value;
+  const cardHolder = document.getElementById('paymentCardHolder').value;
+  const expiryDate = document.getElementById('paymentExpiryDate').value;
+  const cvv = document.getElementById('paymentCVV').value;
+  const billingAddress = document.getElementById('paymentBillingAddress').value;
+
+  try {
+    const result = await window.API.addPaymentInfo({
+      userId,
+      cardNumber,
+      cardHolder,
+      expiryDate,
+      cvv,
+      billingAddress
+    });
+
+    if (result.success) {
+      document.getElementById('paymentUserId').value = '';
+      document.getElementById('paymentCardNumber').value = '';
+      document.getElementById('paymentCardHolder').value = '';
+      document.getElementById('paymentExpiryDate').value = '';
+      document.getElementById('paymentCVV').value = '';
+      document.getElementById('paymentBillingAddress').value = '';
+      loadPaymentInfo();
+    } else {
+      alert('Failed to add payment info: ' + result.error);
+    }
+  } catch (error) {
+    alert('Failed to add payment info: ' + error);
+  }
+}
+
+async function populatePaymentInfo() {
+  try {
+    const result = await window.API.populatePaymentInfo();
+    if (result.success) {
+      loadPaymentInfo();
+    } else {
+      alert('Failed to populate payment info: ' + result.error);
+    }
+  } catch (error) {
+    alert('Failed to populate payment info: ' + error);
+  }
 }
 
 // Add event listeners for real-time validation
