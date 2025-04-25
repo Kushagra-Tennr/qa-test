@@ -31,6 +31,19 @@ async function initDB() {
         )
     `);
 
+    db.run(`
+        CREATE TABLE IF NOT EXISTS paymentInfo (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            card_number TEXT,
+            card_holder TEXT,
+            expiry_date TEXT,
+            cvv TEXT,
+            billing_address TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+
     db.run("INSERT OR IGNORE INTO users (id, username, password) VALUES (1, 'admin', 'admin123')");
 }
 
@@ -121,13 +134,100 @@ function showAllUsers() {
 
     if (results.length > 0) {
         results[0].values.forEach(user => {
-            // Vulnerability: Exposing all user data including passwords
             usersList.innerHTML += `
                 <div>
                     ID: ${user[0]}, Username: ${user[1]}, Password: ${user[2]}
                 </div>
             `;
         });
+    }
+}
+
+function generateRandomPaymentInfo() {
+    const cardTypes = ['Visa', 'Mastercard', 'American Express'];
+    const streets = ['Main St', 'Oak Ave', 'Pine Rd', 'Maple Dr', 'Cedar Ln'];
+    const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix'];
+
+    const cardType = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+    const cardNumber = Math.floor(1000000000000000 + Math.random() * 9000000000000000);
+    const cardHolder = `User ${Math.floor(Math.random() * 1000)}`;
+    const expiryDate = `${Math.floor(Math.random() * 12 + 1).toString().padStart(2, '0')}/${Math.floor(Math.random() * 5 + 23)}`;
+    const cvv = Math.floor(Math.random() * 900 + 100);
+    const billingAddress = `${Math.floor(Math.random() * 9999 + 1)} ${streets[Math.floor(Math.random() * streets.length)]}, ${cities[Math.floor(Math.random() * cities.length)]}`;
+
+    return {
+        card_number: cardNumber,
+        card_holder: cardHolder,
+        expiry_date: expiryDate,
+        cvv: cvv,
+        billing_address: billingAddress
+    };
+}
+
+function populatePaymentInfo() {
+    for (let i = 0; i < 10; i++) {
+        const randomUserId = Math.floor(Math.random() * 10) + 1;
+        const paymentInfo = generateRandomPaymentInfo();
+
+        const query = `INSERT INTO paymentInfo (user_id, card_number, card_holder, expiry_date, cvv, billing_address)
+                      VALUES (${randomUserId}, '${paymentInfo.card_number}', '${paymentInfo.card_holder}',
+                              '${paymentInfo.expiry_date}', '${paymentInfo.cvv}', '${paymentInfo.billing_address}')`;
+
+        try {
+            db.run(query);
+        } catch (e) {
+            console.error('Error populating payment info:', e);
+        }
+    }
+    loadPaymentInfo();
+}
+
+function loadPaymentInfo() {
+    const query = "SELECT * FROM paymentInfo";
+    const results = db.exec(query);
+
+    const paymentInfoList = document.getElementById('paymentInfoList');
+    paymentInfoList.innerHTML = '';
+
+    if (results.length > 0) {
+        results[0].values.forEach(payment => {
+            paymentInfoList.innerHTML += `
+                <div class="payment-info">
+                    <p>User ID: ${payment[1]}</p>
+                    <p>Card Number: ${payment[2]}</p>
+                    <p>Card Holder: ${payment[3]}</p>
+                    <p>Expiry Date: ${payment[4]}</p>
+                    <p>CVV: ${payment[5]}</p>
+                    <p>Billing Address: ${payment[6]}</p>
+                    <button onclick="deletePaymentInfo(${payment[0]})">Delete</button>
+                </div>
+            `;
+        });
+    }
+}
+
+function deletePaymentInfo(id) {
+    const query = `DELETE FROM paymentInfo WHERE id = ${id}`;
+    db.run(query);
+    loadPaymentInfo();
+}
+
+function addPaymentInfo() {
+    const userId = document.getElementById('paymentUserId').value;
+    const cardNumber = document.getElementById('paymentCardNumber').value;
+    const cardHolder = document.getElementById('paymentCardHolder').value;
+    const expiryDate = document.getElementById('paymentExpiryDate').value;
+    const cvv = document.getElementById('paymentCVV').value;
+    const billingAddress = document.getElementById('paymentBillingAddress').value;
+
+    const query = `INSERT INTO paymentInfo (user_id, card_number, card_holder, expiry_date, cvv, billing_address)
+                  VALUES (${userId}, '${cardNumber}', '${cardHolder}', '${expiryDate}', '${cvv}', '${billingAddress}')`;
+
+    try {
+        db.run(query);
+        loadPaymentInfo();
+    } catch (e) {
+        console.error('Error adding payment info:', e);
     }
 }
 
