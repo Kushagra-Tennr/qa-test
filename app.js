@@ -1,6 +1,6 @@
 let db;
 let currentSession = null;  // Server-side session state
-const ADMIN_PASSWORD = "admin123";
+const ADMIN_PASSWORD = "Admin123";
 
 // API endpoints object
 const API = {
@@ -179,7 +179,7 @@ async function initDB() {
         )
     `);
 
-    db.run("INSERT OR IGNORE INTO users (id, username, password) VALUES (1, 'admin', 'admin123')");
+    db.run("INSERT OR IGNORE INTO users (id, username, password) VALUES (1, 'admin', 'Admin123')");
 }
 
 // Expose API to window object

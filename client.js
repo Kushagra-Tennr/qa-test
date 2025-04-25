@@ -147,6 +147,8 @@ async function register() {
   try {
     const result = await window.API.register(username, password);
     if (result.success) {
+      clearError(document.getElementById('username'));
+      clearError(document.getElementById('password'));
       alert('Registration successful! Please login.');
     } else {
       showError(document.getElementById('username'), 'Registration failed: ' + result.error);
