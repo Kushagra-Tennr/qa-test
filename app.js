@@ -105,7 +105,7 @@ const API = {
             const randomUserId = Math.floor(Math.random() * 10) + 1;
             const paymentInfo = generateRandomPaymentInfo();
 
-            const query = `INSERT INTO paymentInfo (user_id, card_number, card_holder, expiry_date, cvv, billing_address)
+            const query = `INSERT OR IGNORE INTO paymentInfo (user_id, card_number, card_holder, expiry_date, cvv, billing_address)
                           VALUES (${randomUserId}, '${paymentInfo.card_number}', '${paymentInfo.card_holder}',
                                   '${paymentInfo.expiry_date}', '${paymentInfo.cvv}', '${paymentInfo.billing_address}')`;
 
@@ -180,6 +180,9 @@ async function initDB() {
     `);
 
     db.run("INSERT OR IGNORE INTO users (id, username, password) VALUES (1, 'admin', 'Admin123')");
+
+    // Pre-populate payment info using the API method
+    await API.populatePaymentInfo();
 }
 
 // Expose API to window object
