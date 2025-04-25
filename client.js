@@ -60,7 +60,10 @@ function clearError(element) {
 }
 
 // State management
-let currentUser = null;
+let clientState = {
+  currentUser: null,
+  isAdmin: false
+};
 
 // UI Functions
 async function login() {
@@ -85,17 +88,15 @@ async function login() {
   clearError(document.getElementById('password'));
 
   try {
-    const user = await window.API.login(username, password);
-    if (user) {
-      currentUser = {
-        id: user[0],
-        username: user[1]
-      };
+    const session = await window.API.login(username, password);
+    if (session) {
+      clientState.currentUser = session;
+      clientState.isAdmin = username === 'admin';
 
       document.getElementById('loginSection').style.display = 'none';
       document.getElementById('noteSection').style.display = 'block';
 
-      if (username === 'admin') {
+      if (clientState.isAdmin) {
         document.getElementById('adminPanel').style.display = 'block';
       }
 
@@ -105,6 +106,20 @@ async function login() {
     }
   } catch (error) {
     showError(document.getElementById('password'), 'Login failed: ' + error);
+  }
+}
+
+async function logout() {
+  try {
+    await window.API.logout();
+    clientState.currentUser = null;
+    clientState.isAdmin = false;
+
+    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('noteSection').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'none';
+  } catch (error) {
+    console.error('Logout failed:', error);
   }
 }
 
@@ -154,7 +169,7 @@ async function addNote() {
   clearError(document.getElementById('newNote'));
 
   try {
-    const result = await window.API.addNote(currentUser.id, noteText);
+    const result = await window.API.addNote(clientState.currentUser.id, noteText);
     if (result.success) {
       document.getElementById('newNote').value = '';
       loadNotes();
@@ -168,17 +183,17 @@ async function addNote() {
 
 async function loadNotes() {
   try {
-    const notes = await window.API.getNotes(currentUser.id);
+    const notes = await window.API.getNotes(clientState.currentUser.id);
     const notesList = document.getElementById('notesList');
     notesList.innerHTML = '';
 
     notes.forEach(note => {
       notesList.innerHTML += `
-        <div class="note">
-          ${note[2]}
-          <button onclick="deleteNote(${note[0]})">Delete</button>
-        </div>
-      `;
+                <div class="note">
+                    ${note[2]}
+                    <button onclick="deleteNote(${note[0]})">Delete</button>
+                </div>
+            `;
     });
   } catch (error) {
     console.error('Failed to load notes:', error);

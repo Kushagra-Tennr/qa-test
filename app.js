@@ -1,5 +1,5 @@
 let db;
-let currentUser = null;
+let currentSession = null;  // Server-side session state
 const ADMIN_PASSWORD = "admin123";
 
 // API endpoints object
@@ -8,7 +8,23 @@ const API = {
     login: async (username, password) => {
         const query = `SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`;
         const result = db.exec(query);
-        return result.length > 0 ? result[0].values[0] : null;
+        if (result.length > 0) {
+            currentSession = {
+                id: result[0].values[0][0],
+                username: result[0].values[0][1]
+            };
+            return currentSession;
+        }
+        return null;
+    },
+
+    getCurrentSession: () => {
+        return currentSession;
+    },
+
+    logout: () => {
+        currentSession = null;
+        return { success: true };
     },
 
     register: async (username, password) => {
