@@ -1,9 +1,8 @@
 let db;
 let currentUser = null;
-const ADMIN_PASSWORD = "admin123"; // Vulnerability: Hardcoded credentials
+const ADMIN_PASSWORD = "admin123";
 
-// Vulnerability: Global error handler exposes internal details
-window.onerror = function(msg, url, lineNo, columnNo, error) {
+window.onerror = function (_msg, _url, _lineNo, _columnNo, error) {
     alert('Error: ' + error.stack);
     return false;
 };
@@ -13,14 +12,12 @@ async function initDB() {
         locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
     });
 
-    // Vulnerability: No error handling for database initialization
     db = new SQL.Database();
 
-    // Vulnerability: Raw string concatenation in SQL
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
+            username TEXT UNIQUE,
             password TEXT
         )
     `);
@@ -34,33 +31,27 @@ async function initDB() {
         )
     `);
 
-    // Vulnerability: Hardcoded admin account
     db.run("INSERT OR IGNORE INTO users (id, username, password) VALUES (1, 'admin', 'admin123')");
 }
 
-// Vulnerability: No input validation
 function register() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
-    // Vulnerability: SQL injection possible
     const query = `INSERT INTO users (username, password) VALUES ('${username}', '${password}')`;
 
     try {
         db.run(query);
         alert('Registration successful!');
     } catch (e) {
-        // Vulnerability: Exposing error details to user
         alert('Registration failed: ' + e.toString());
     }
 }
 
-// Vulnerability: Insecure login implementation
 function login() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
-    // Vulnerability: SQL injection possible
     const query = `SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`;
     const result = db.exec(query);
 
@@ -73,7 +64,6 @@ function login() {
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('noteSection').style.display = 'block';
 
-        // Vulnerability: Showing admin panel based on client-side check
         if (username === 'admin') {
             document.getElementById('adminPanel').style.display = 'block';
         }
@@ -85,10 +75,8 @@ function login() {
 }
 
 function addNote() {
-    // Vulnerability: No authentication check
     const content = document.getElementById('newNote').value;
 
-    // Vulnerability: XSS possible through notes
     const query = `INSERT INTO notes (user_id, content) VALUES (${currentUser.id}, '${content}')`;
 
     try {
@@ -100,16 +88,14 @@ function addNote() {
 }
 
 function loadNotes() {
-    // Vulnerability: SQL injection possible
     const query = `SELECT * FROM notes WHERE user_id = ${currentUser.id}`;
     const results = db.exec(query);
 
     const notesList = document.getElementById('notesList');
-    notesList.innerHTML = ''; // Vulnerability: innerHTML usage
+    notesList.innerHTML = '';
 
     if (results.length > 0) {
         results[0].values.forEach(note => {
-            // Vulnerability: XSS through note content
             notesList.innerHTML += `
                 <div class="note">
                     ${note[2]}
@@ -120,15 +106,12 @@ function loadNotes() {
     }
 }
 
-// Vulnerability: No authentication check, allows unauthorized deletion
 function deleteNote(noteId) {
-    // Vulnerability: No validation if note belongs to user
     const query = `DELETE FROM notes WHERE id = ${noteId}`;
     db.run(query);
     loadNotes();
 }
 
-// Vulnerability: No admin authentication check
 function showAllUsers() {
     const query = "SELECT * FROM users";
     const results = db.exec(query);
@@ -148,11 +131,4 @@ function showAllUsers() {
     }
 }
 
-// Memory leak: Event listeners never removed
-document.addEventListener('mousemove', function(e) {
-    // Vulnerability: Unnecessary tracking of all mouse movements
-    console.log('Mouse position:', e.clientX, e.clientY);
-});
-
-// Initialize database on page load
 initDB().catch(console.error);
